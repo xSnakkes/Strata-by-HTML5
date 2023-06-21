@@ -1,26 +1,55 @@
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.querySelector("form");
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const messageInput = document.getElementById("message");
+    const nameError = document.getElementById("name-error");
+    const emailError = document.getElementById("email-error");
+    const messageError = document.getElementById("message-error");
+
     form.addEventListener("submit", submitForm);
+    nameInput.addEventListener(
+        "input",
+        clearInputError.bind(null, nameInput, nameError)
+    );
+    emailInput.addEventListener(
+        "input",
+        clearInputError.bind(null, emailInput, emailError)
+    );
+    messageInput.addEventListener(
+        "input",
+        clearInputError.bind(null, messageInput, messageError)
+    );
 });
 
 async function submitForm(event) {
     event.preventDefault();
-    // Take input value
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const message = document.getElementById("message").value;
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const messageInput = document.getElementById("message");
+    const nameError = document.getElementById("name-error");
+    const emailError = document.getElementById("email-error");
+    const messageError = document.getElementById("message-error");
 
-    if (!validateForm()) {
+    if (
+        !validateForm(
+            nameInput,
+            emailInput,
+            messageInput,
+            nameError,
+            emailError,
+            messageError
+        )
+    ) {
         return;
     }
-    // Create obj with form value
+
     const data = {
-        name: name,
-        email: email,
-        message: message,
+        name: nameInput.value,
+        email: emailInput.value,
+        message: messageInput.value,
     };
 
-    // Option POST
     const options = {
         method: "POST",
         headers: {
@@ -29,73 +58,80 @@ async function submitForm(event) {
         body: JSON.stringify(data),
     };
 
-    // Send fetch on server
-    fetch("https://api.byteplex.info/api/test/contact/", options)
-        .then((response) => {
-            // Обработка ответа сервера
-            if (response.ok) {
-                console.log("Done!");
-                popupFormControl()    
-            } else {
-                alert("Error.");
-            }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            alert(error)
-        });
+    try {
+        const response = await fetch(
+            "https://api.byteplex.info/api/test/contact/",
+            options
+        );
+        if (response.ok) {
+            console.log("Done!");
+            popupFormControl();
+        } else {
+            throw new Error("Error.");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert(error);
+    }
 }
 
-function popupFormControl(){
-    document.querySelector('.popup-form').classList.remove("_close")
-    document.querySelector('.form-close').addEventListener("click", (event)=>{
-        document.querySelector('.popup-form').classList.add("_close")
-    })
-    document.addEventListener("click",(event)=>{
-        const targetItem = event.target;
-        if(!targetItem.closest('.popup__container')){
-            document.querySelector('.popup-form').classList.add("_close")
-        } 
-    })
-    document.addEventListener("scroll",(event)=>{
-        document.querySelector('.popup-form').classList.add("_close")
-    })
+function popupFormControl() {
+    const popupForm = document.querySelector(".popup-form");
+    const formClose = document.querySelector(".form-close");
+    const popupContainer = document.querySelector(".popup__container");
+
+    popupForm.classList.remove("_close");
+
+    formClose.addEventListener("click", closePopupForm.bind(null, popupForm));
+    document.addEventListener(
+        "click",
+        outsidePopupContainer.bind(null, popupForm, popupContainer)
+    );
+    document.addEventListener("scroll", closePopupForm.bind(null, popupForm));
 }
 
-function validateForm() {
-    const nameInput = document.getElementById("name");
-    const emailInput = document.getElementById("email");
-    const messageInput = document.getElementById("message");
-    const nameError = document.getElementById("name-error");
-    const emailError = document.getElementById("email-error");
-    const messageError = document.getElementById("message-error");
+function closePopupForm(popupForm) {
+    popupForm.classList.add("_close");
+}
 
-    // Сброс предыдущих ошибок
-    nameError.textContent = "";
-    emailError.textContent = "";
-    messageError.textContent = "";
+function outsidePopupContainer(popupForm, popupContainer, event) {
+    if (!event.target.closest(".popup__container")) {
+        closePopupForm(popupForm);
+    }
+}
 
-    // Проверка наличия значения в поле "Name"
+function validateForm(
+    nameInput,
+    emailInput,
+    messageInput,
+    nameError,
+    emailError,
+    messageError
+) {
+    clearInputError(nameInput, nameError);
+    clearInputError(emailInput, emailError);
+    clearInputError(messageInput, messageError);
+
     if (nameInput.value.trim() === "") {
-        nameError.textContent = "Please enter your name.";
-        nameInput.classList.add("error-input");
-        nameInput.focus();
+        displayInputError(nameInput, nameError, "Please enter your name.");
         return false;
     }
 
-    // Проверка валидности значения в поле "Email"
     if (!isValidEmail(emailInput.value)) {
-        emailError.textContent = "Please enter a valid email address.";
-        emailInput.classList.add("error-input");
-        emailInput.focus();
+        displayInputError(
+            emailInput,
+            emailError,
+            "Please enter a valid email address."
+        );
         return false;
     }
 
-    // Проверка наличия значения в поле "Message"
     if (messageInput.value.trim() === "") {
-        messageError.textContent = "Please enter a message.";
-        messageInput.classList.add("error-input");
-        messageInput.focus();
+        displayInputError(
+            messageInput,
+            messageError,
+            "Please enter a message."
+        );
         return false;
     }
 
@@ -103,23 +139,17 @@ function validateForm() {
 }
 
 function isValidEmail(email) {
-    // Простая проверка валидности email с использованием регулярного выражения
     const emailPattern = /^\S+@\S+\.\S+$/;
     return emailPattern.test(email);
 }
 
-// Удаление класса ошибки и очистка сообщений об ошибках при вводе в поле
-document.getElementById("name").addEventListener("input", function () {
-    this.classList.remove("error-input");
-    document.getElementById("name-error").textContent = "";
-});
+function clearInputError(inputElement, errorElement) {
+    inputElement.classList.remove("error-input");
+    errorElement.textContent = "";
+}
 
-document.getElementById("email").addEventListener("input", function () {
-    this.classList.remove("error-input");
-    document.getElementById("email-error").textContent = "";
-});
-
-document.getElementById("message").addEventListener("input", function () {
-    this.classList.remove("error-input");
-    document.getElementById("message-error").textContent = "";
-});
+function displayInputError(inputElement, errorElement, errorMessage) {
+    inputElement.classList.add("error-input");
+    errorElement.textContent = errorMessage;
+    inputElement.focus();
+}
